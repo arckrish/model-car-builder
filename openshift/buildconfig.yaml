@@ -1,0 +1,70 @@
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: model-car-builder
+  labels:
+    app: model-car-builder
+spec:
+  source:
+    type: Dockerfile
+    dockerfile: |
+      FROM registry.access.redhat.com/ubi9/ubi-minimal:9.4 as downloader
+      USER root
+      ARG model_repo
+      ARG HF_TOKEN
+      ENV HF_TOKEN=$HF_TOKEN
+      RUN microdnf install -y python3.12 python3.12-pip \
+          && pip3.12 install huggingface-hub \
+          && cleaned_repo=$(printf '%s' "$model_repo" | sed 's/^"//; s/"$//') \
+          && case "$cleaned_repo" in \
+               (""|*[^A-Za-z0-9_.\/-]*) echo "Invalid model repo id: $cleaned_repo" >&2; exit 1 ;; \
+             esac \
+          && HF_HUB_DISABLE_XET=1 hf download "$cleaned_repo" --local-dir /models \
+          && rpm -e --nodeps $(rpm -qa 'python3*') 2>/dev/null; \
+             microdnf clean all; \
+             rm -rf /root/.cache ~/.cache /tmp/* /var/cache/yum /usr/lib64/python3* /usr/lib/python3*; \
+             mkdir -p /layers/config; \
+             for i in 0 1 2 3 4 5 6 7 8 9; do mkdir -p /layers/shard-$i; done; \
+             idx=0; \
+             for f in /models/*.safetensors /models/*.gguf /models/*.bin; do \
+               [ -f "$f" ] || continue; \
+               mv "$f" "/layers/shard-$idx/"; \
+               idx=$(( (idx + 1) % 10 )); \
+             done; \
+             mv /models/* /layers/config/ 2>/dev/null; true
+      FROM registry.access.redhat.com/ubi9/ubi-micro:9.4
+      COPY --from=downloader /layers/config/ /models/
+      COPY --from=downloader /layers/shard-0/ /models/
+      COPY --from=downloader /layers/shard-1/ /models/
+      COPY --from=downloader /layers/shard-2/ /models/
+      COPY --from=downloader /layers/shard-3/ /models/
+      COPY --from=downloader /layers/shard-4/ /models/
+      COPY --from=downloader /layers/shard-5/ /models/
+      COPY --from=downloader /layers/shard-6/ /models/
+      COPY --from=downloader /layers/shard-7/ /models/
+      COPY --from=downloader /layers/shard-8/ /models/
+      COPY --from=downloader /layers/shard-9/ /models/
+      USER 1001
+  strategy:
+    type: Docker
+    dockerStrategy:
+      buildArgs:
+        - name: model_repo
+          value: "placeholder"
+  output:
+    to:
+      kind: DockerImage
+      name: "quay.io/placeholder/model-car:latest"
+    pushSecret:
+      name: quay-push-secret
+  successfulBuildsHistoryLimit: 2
+  failedBuildsHistoryLimit: 1
+  resources:
+    limits:
+      memory: 16Gi
+      cpu: "4"
+      ephemeral-storage: 400Gi
+    requests:
+      memory: 8Gi
+      cpu: "2"
+      ephemeral-storage: 400Gi

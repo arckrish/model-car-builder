@@ -1,0 +1,60 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gemma4-e4b-models
+  labels:
+    app: model-storage
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+  storageClassName: gp3-csi
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: download-gemma4-e4b
+  labels:
+    app: model-download
+spec:
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: downloader
+          image: registry.access.redhat.com/ubi9/python-312:latest
+          command:
+            - /bin/bash
+            - -c
+            - |
+              pip install huggingface-hub &&
+              HF_HUB_DISABLE_XET=1 hf download "$MODEL_REPO" --local-dir /mnt/models &&
+              echo "Download complete. Files:" &&
+              ls -lh /mnt/models/
+          env:
+            - name: MODEL_REPO
+              value: "google/gemma-4-E4B-it"
+            - name: HF_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: hf-token
+                  key: token
+          volumeMounts:
+            - name: model-storage
+              mountPath: /mnt/models
+          resources:
+            requests:
+              memory: 4Gi
+              cpu: "1"
+            limits:
+              memory: 8Gi
+              cpu: "2"
+      volumes:
+        - name: model-storage
+          persistentVolumeClaim:
+            claimName: gemma4-e4b-models

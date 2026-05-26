@@ -1,0 +1,55 @@
+###############################################################################
+# Example — deploy a model car with KServe on Red Hat OpenShift AI
+#
+# This shows how a model car OCI image (built by any of the three methods in
+# this repo) is consumed by KServe. The model is served straight from the
+# registry — no S3 bucket required.
+#
+# Replace the image reference with the model car you built and pushed.
+#
+# Apply with:
+#   oc apply -f examples/inferenceservice-modelcar.yaml -n <your-project>
+#
+# You can also do this entirely from the OpenShift AI dashboard:
+#   Project -> Models -> Deploy model -> Connection type "OCI compliant registry"
+#   URI: oci://quay.io/youruser/granite-3.3-2b-instruct:latest
+###############################################################################
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: granite-3-3-2b-instruct
+  labels:
+    opendatahub.io/dashboard: "true"
+  annotations:
+    # modelcar images are pulled and mounted as a sidecar by KServe
+    serving.kserve.io/deploymentMode: RawDeployment
+spec:
+  predictor:
+    minReplicas: 1
+    model:
+      modelFormat:
+        name: vLLM
+      runtime: vllm-runtime          # vLLM ServingRuntime for KServe
+      # The model car OCI image. oci:// tells KServe this is a modelcar.
+      storageUri: "oci://quay.io/youruser/granite-3.3-2b-instruct:latest"
+      args:
+        - "--max-model-len=8192"
+      resources:
+        requests:
+          cpu: "2"
+          memory: 8Gi
+          nvidia.com/gpu: "1"
+        limits:
+          cpu: "4"
+          memory: 16Gi
+          nvidia.com/gpu: "1"
+---
+# If the model car lives in a PRIVATE registry, create a pull secret and
+# reference it via a ServiceAccount, e.g.:
+#
+#   oc create secret docker-registry quay-pull-secret \
+#     --docker-server=quay.io \
+#     --docker-username=youruser+robot \
+#     --docker-password=your-token
+#
+#   oc secrets link default quay-pull-secret --for=pull

@@ -1,0 +1,68 @@
+# syntax=docker/dockerfile:1
+###############################################################################
+# Model Car Containerfile — laptop build
+#
+# A "model car" is an OCI-compliant container image that packages a model's
+# weights and config so KServe (in Red Hat OpenShift AI) can serve it directly
+# from a registry, with no S3 dependency.
+#
+# This Containerfile downloads a model from Hugging Face in a build stage, then
+# copies ONLY the model files into a minimal ubi-micro final image.
+#
+# Build args:
+#   model_repo  — Hugging Face repo id, e.g. ibm-granite/granite-3.3-2b-instruct
+#   HF_TOKEN    — Hugging Face token (only needed for gated/private models)
+#
+# Example:
+#   podman build \
+#     --build-arg model_repo=ibm-granite/granite-3.3-2b-instruct \
+#     --secret id=hf_token,env=HF_TOKEN \
+#     -t quay.io/youruser/granite-3.3-2b-instruct:latest \
+#     -f laptop/Containerfile .
+#
+# NOTE: Never hardcode HF_TOKEN in this file. Pass it at build time via
+# --build-arg or, preferably, a build secret (see build.sh).
+###############################################################################
+
+FROM registry.access.redhat.com/ubi9/python-312:latest AS downloader
+
+USER root
+WORKDIR /build
+
+ARG model_repo
+ARG HF_TOKEN
+ENV HF_HOME=/build/.hfcache
+
+RUN pip install --no-cache-dir "huggingface-hub[cli]"
+
+# Validate the repo id to avoid shell-injection / typo surprises, then download.
+# Only safetensors, config and tokenizer files are pulled (no pickled .bin by
+# default — safetensors is the secure standard used by Red Hat AI models).
+RUN --mount=type=secret,id=hf_token,required=false \
+    cleaned_repo="$(printf '%s' "$model_repo" | sed 's/^"//; s/"$//')" \
+    && case "$cleaned_repo" in \
+         (""|*[^A-Za-z0-9_.\/-]*) echo "Invalid model repo id: $cleaned_repo" >&2; exit 1 ;; \
+       esac \
+    && if [ -f /run/secrets/hf_token ]; then export HF_TOKEN="$(cat /run/secrets/hf_token)"; fi \
+    && HF_HUB_DISABLE_XET=1 hf download "$cleaned_repo" \
+         --local-dir /models \
+         --exclude "original/*" "*.pth" "*.gguf" \
+    && echo "Downloaded files:" && ls -lhR /models
+
+###############################################################################
+# Final image — minimal, shell-capable (ubi-micro) so KServe can stat the files.
+# Do NOT use scratch: KServe needs a shell in the modelcar container.
+###############################################################################
+FROM registry.access.redhat.com/ubi9/ubi-micro:9.4
+
+COPY --from=downloader /models /models
+
+# OpenShift runs containers with a random UID and the root (0) group.
+# Make the model files readable by the root group.
+USER root
+RUN chmod -R g+rX /models 2>/dev/null || true
+
+USER 1001
+
+LABEL org.opencontainers.image.title="model-car" \
+      org.opencontainers.image.description="OCI model car image for KServe / OpenShift AI"

@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Model Car Builder</title>
+<style>
+  :root {
+    --ink: #0b0b0d;
+    --paper: #f4f1ea;
+    --paper-2: #e9e4d8;
+    --rh-red: #ee0000;
+    --rh-red-deep: #be0000;
+    --line: #1c1c1f;
+    --muted: #6b6358;
+    --accent: #1f6feb;
+    --ok: #1a7f37;
+    --shadow: 6px 6px 0 var(--ink);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Courier New', Courier, monospace;
+    background-image:
+      repeating-linear-gradient(0deg, transparent, transparent 38px, rgba(0,0,0,.035) 38px, rgba(0,0,0,.035) 39px);
+    line-height: 1.5;
+  }
+  a { color: var(--accent); }
+
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 22px 80px; }
+
+  /* ---------- Header ---------- */
+  header {
+    border-bottom: 3px solid var(--ink);
+    background: var(--ink);
+    color: var(--paper);
+  }
+  .head-inner {
+    max-width: 1180px; margin: 0 auto; padding: 22px;
+    display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+  }
+  .logo-mark {
+    width: 54px; height: 54px; flex: none;
+    background: var(--rh-red);
+    border: 2px solid var(--paper);
+    display: grid; place-items: center;
+    font-size: 30px; transform: rotate(-4deg);
+  }
+  .title-block h1 {
+    font-size: 27px; letter-spacing: -.5px; text-transform: uppercase;
+    font-weight: 700;
+  }
+  .title-block p { font-size: 12.5px; color: #b9b3a6; letter-spacing: .5px; }
+  .badge {
+    margin-left: auto; font-size: 11px; border: 1px solid #555;
+    padding: 5px 10px; color: #cfc8b8; text-transform: uppercase;
+  }
+
+  /* ---------- Stepper ---------- */
+  .steps {
+    display: flex; gap: 0; margin: 26px 0 14px; flex-wrap: wrap;
+    border: 2px solid var(--ink); background: var(--paper-2);
+  }
+  .step {
+    flex: 1 1 200px; padding: 12px 14px; border-right: 2px solid var(--ink);
+    font-size: 12px; text-transform: uppercase; letter-spacing: .5px;
+    display: flex; align-items: center; gap: 9px; color: var(--muted);
+  }
+  .step:last-child { border-right: none; }
+  .step.active { background: var(--rh-red); color: #fff; }
+  .step.done { background: var(--ink); color: var(--paper); }
+  .step .num {
+    width: 21px; height: 21px; border: 1.5px solid currentColor;
+    display: grid; place-items: center; font-weight: 700; flex: none;
+  }
+
+  section.panel {
+    border: 2px solid var(--ink); background: var(--paper);
+    box-shadow: var(--shadow); margin-bottom: 26px;
+  }
+  .panel-head {
+    background: var(--ink); color: var(--paper);
+    padding: 9px 16px; font-size: 12px; text-transform: uppercase;
+    letter-spacing: 1.5px; display: flex; justify-content: space-between;
+  }
+  .panel-body { padding: 20px; }
+
+  /* ---------- Mode toggle ---------- */
+  .modes { display: flex; gap: 14px; flex-wrap: wrap; }
+  .mode {
+    flex: 1 1 220px; border: 2px solid var(--ink); background: var(--paper-2);
+    padding: 16px; cursor: pointer; transition: transform .08s;
+  }
+  .mode:hover { transform: translate(-2px,-2px); box-shadow: 4px 4px 0 var(--ink); }
+  .mode.sel { background: var(--rh-red); color: #fff; }
+  .mode h3 { font-size: 15px; text-transform: uppercase; margin-bottom: 6px; }
+  .mode p { font-size: 12px; }
+  .mode .tag { font-size: 10px; opacity: .8; display: block; margin-top: 8px; }
+
+  /* ---------- Config form ---------- */
+  .field { margin-bottom: 15px; }
+  .field label {
+    display: block; font-size: 11px; text-transform: uppercase;
+    letter-spacing: .5px; margin-bottom: 5px; font-weight: 700;
+  }
+  .field input, .field select {
+    width: 100%; font-family: inherit; font-size: 13px; padding: 9px 11px;
+    border: 2px solid var(--ink); background: var(--paper);
+  }
+  .field .hint { font-size: 10.5px; color: var(--muted); margin-top: 4px; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+  /* ---------- Output ---------- */
+  .out {
+    background: var(--ink); color: #e8e3d6; padding: 16px;
+    font-size: 12.5px; white-space: pre-wrap; word-break: break-all;
+    border: 2px solid var(--ink); position: relative; line-height: 1.7;
+  }
+  .out-actions {
+    position: absolute; top: 10px; right: 10px;
+    display: flex; gap: 6px;
+  }
+  .out-btn {
+    font-family: inherit; font-size: 10px; text-transform: uppercase;
+    letter-spacing: .5px; border: none; padding: 6px 11px; cursor: pointer;
+    color: #fff;
+  }
+  .out-btn.copy { background: var(--rh-red); }
+  .out-btn.dl   { background: #2f6f3e; }
+  .out-btn:disabled { background: #6b6358; cursor: not-allowed; }
+  .out-btn:active { transform: translateY(1px); }
+
+  .tabs { display: flex; gap: 0; margin-bottom: 0; }
+  .tab {
+    font-family: inherit; font-size: 11px; text-transform: uppercase;
+    padding: 9px 15px; border: 2px solid var(--ink); border-bottom: none;
+    background: var(--paper-2); cursor: pointer; letter-spacing: .5px;
+  }
+  .tab.on { background: var(--ink); color: var(--paper); }
+
+  .summary-line {
+    font-size: 12px; padding: 10px 14px; background: var(--paper-2);
+    border: 2px solid var(--ink); margin-bottom: 16px;
+  }
+  .summary-line b { color: var(--rh-red-deep); }
+  .warn {
+    font-size: 11.5px; background: #fff4d6; border: 2px solid var(--ink);
+    border-left: 6px solid #d99c00; padding: 10px 13px; margin-top: 12px;
+  }
+  footer {
+    text-align: center; font-size: 11px; color: var(--muted);
+    padding: 20px; border-top: 2px solid var(--ink); margin-top: 10px;
+  }
+  .hidden { display: none; }
+  @media (max-width: 620px) { .two-col { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="head-inner">
+    <div class="logo-mark">&#9686;</div>
+    <div class="title-block">
+      <h1>Model Car Builder</h1>
+      <p>Package Hugging Face models as OCI images for KServe &amp; OpenShift AI</p>
+    </div>
+    <div class="badge">Interactive&nbsp;Console</div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="steps">
+    <div class="step active" id="st1"><span class="num">1</span> Build Target</div>
+    <div class="step" id="st2"><span class="num">2</span> Configure</div>
+    <div class="step" id="st3"><span class="num">3</span> Generate</div>
+  </div>
+
+  <!-- STEP 1 - MODE -->
+  <section class="panel">
+    <div class="panel-head"><span>Step 1 &mdash; Where do you want to build?</span></div>
+    <div class="panel-body">
+      <div class="modes">
+        <div class="mode" data-mode="laptop">
+          <h3>&#128187; On Your Laptop</h3>
+          <p>Build locally with podman or docker, then push to a registry.</p>
+          <span class="tag">&rarr; laptop/build.sh</span>
+        </div>
+        <div class="mode" data-mode="openshift">
+          <h3>&#9729; In an OpenShift Cluster</h3>
+          <p>Run a BuildConfig on the cluster. No local resources needed.</p>
+          <span class="tag">&rarr; openshift/deploy.sh</span>
+        </div>
+        <div class="mode" data-mode="pipeline">
+          <h3>&#128260; Data Science Pipeline</h3>
+          <p>Build, push, and register the model in OpenShift AI's Model Registry.</p>
+          <span class="tag">&rarr; pipeline/run_pipeline.py</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEP 2 - CONFIG -->
+  <section class="panel" id="panel-config">
+    <div class="panel-head"><span>Step 2 &mdash; Configure the build</span></div>
+    <div class="panel-body">
+
+      <div class="field">
+        <label for="f-repo">Hugging Face model repo</label>
+        <input type="text" id="f-repo" placeholder="org/model-name"
+               value="RedHatAI/granite-3.3-2b-instruct-FP8-dynamic">
+        <div class="hint">
+          Format: <code>organization/model-name</code>. Any repo on
+          <a href="https://huggingface.co" target="_blank">huggingface.co</a>
+          works &mdash; e.g. a Red Hat AI validated model from
+          <a href="https://huggingface.co/RedHatAI" target="_blank">RedHatAI</a>.
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="field">
+          <label for="f-registry">Target registry + namespace</label>
+          <input type="text" id="f-registry" placeholder="quay.io/youruser" value="quay.io/youruser">
+          <div class="hint">Where the model car image is pushed.</div>
+        </div>
+        <div class="field">
+          <label for="f-tag">Image tag</label>
+          <input type="text" id="f-tag" placeholder="latest" value="latest">
+          <div class="hint">e.g. <code>latest</code>, <code>v1.0</code>.</div>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="field">
+          <label for="f-namespace">OpenShift project / namespace</label>
+          <input type="text" id="f-namespace" placeholder="model-cars" value="model-cars">
+        </div>
+        <div class="field">
+          <label for="f-tool">Container tool (laptop only)</label>
+          <select id="f-tool">
+            <option value="podman">podman</option>
+            <option value="docker">docker</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="two-col" id="pipeline-fields">
+        <div class="field">
+          <label for="f-mname">Model Registry name</label>
+          <input type="text" id="f-mname" placeholder="granite-3.3-2b-instruct">
+        </div>
+        <div class="field">
+          <label for="f-mver">Model version</label>
+          <input type="text" id="f-mver" placeholder="1.0.0" value="1.0.0">
+        </div>
+      </div>
+
+      <div class="field">
+        <label><input type="checkbox" id="f-gated" style="width:auto;margin-right:6px">
+        This model is gated / private (requires a Hugging Face token)</label>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEP 3 - OUTPUT -->
+  <section class="panel" id="panel-output">
+    <div class="panel-head"><span>Step 3 &mdash; Generated commands</span></div>
+    <div class="panel-body">
+      <div class="summary-line" id="sel-summary">Pick a build target to begin.</div>
+      <div class="tabs" id="out-tabs"></div>
+      <div class="out" id="out-box">
+        <div class="out-actions">
+          <button class="out-btn copy" id="btn-copy" onclick="copyOut()">Copy</button>
+          <button class="out-btn dl"   id="btn-dl"   onclick="downloadScript()">Download .sh</button>
+        </div>
+        <span id="out-text">Select a build target and enter a model repo to generate commands.</span>
+      </div>
+      <div class="warn" id="next-steps"></div>
+    </div>
+  </section>
+
+  <footer>
+    Model Car Builder &middot; built for Red Hat OpenShift AI &amp; KServe &middot;
+    a model car is an OCI image KServe serves directly &mdash; no S3 required.
+  </footer>
+</div>
+
+<script>
+/* ============================ STATE ============================ */
+const S = { mode:null, outTab:0 };
+
+/* ============================ RENDER: MODE ============================ */
+document.querySelectorAll('.mode').forEach(el=>{
+  el.addEventListener('click',()=>{
+    document.querySelectorAll('.mode').forEach(m=>m.classList.remove('sel'));
+    el.classList.add('sel');
+    S.mode = el.dataset.mode;
+    document.getElementById('pipeline-fields').classList.toggle('hidden', S.mode!=='pipeline');
+    refresh();
+  });
+});
+
+/* ============================ CONFIG INPUTS ============================ */
+['f-repo','f-registry','f-tag','f-namespace','f-tool','f-mname','f-mver','f-gated']
+  .forEach(id=>{
+    const el = document.getElementById(id);
+    el.addEventListener('input',refresh);
+    el.addEventListener('change',refresh);
+  });
+
+// Auto-fill the Model Registry name from the repo when it is left empty.
+document.getElementById('f-repo').addEventListener('input',()=>{
+  const mname = document.getElementById('f-mname');
+  if (!mname.dataset.touched){
+    const repo = document.getElementById('f-repo').value.trim();
+    mname.value = (repo.split('/').pop()||'').toLowerCase();
+  }
+});
+document.getElementById('f-mname').addEventListener('input',e=>{
+  e.target.dataset.touched = '1';
+});
+
+/* ============================ STEPPER ============================ */
+function updateSteps(){
+  const c = cfg();
+  const step1 = !!S.mode;
+  const step2 = !!(S.mode && c.repo);
+  setStep('st1', step1, !step1);
+  setStep('st2', step2, step1 && !step2);
+  setStep('st3', false, step2);
+}
+function setStep(id, isDone, isActive){
+  const el = document.getElementById(id);
+  el.classList.toggle('done', isDone);
+  el.classList.toggle('active', isActive && !isDone);
+}
+
+/* ============================ COMMAND GENERATION ============================ */
+function cfg(){
+  return {
+    repo: document.getElementById('f-repo').value.trim(),
+    registry: document.getElementById('f-registry').value.trim(),
+    tag: document.getElementById('f-tag').value.trim() || 'latest',
+    ns: document.getElementById('f-namespace').value.trim() || 'model-cars',
+    tool: document.getElementById('f-tool').value,
+    mname: document.getElementById('f-mname').value.trim(),
+    mver: document.getElementById('f-mver').value.trim() || '1.0.0',
+    gated: document.getElementById('f-gated').checked
+  };
+}
+function imgName(repo){ return (repo.split('/').pop()||'model').toLowerCase(); }
+function validRepo(repo){ return /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repo); }
+
+function genLaptop(c){
+  const img = `${c.registry}/${imgName(c.repo)}:${c.tag}`;
+  const hf = c.gated
+    ? `# Gated model - export your Hugging Face token first:\nexport HF_TOKEN=hf_xxxxxxxxxxxxxxxxxxxx\n\n`
+    : `# Public model - no token needed.\n\n`;
+  return hf +
+`# 1. Log in to your registry\n${c.tool} login ${c.registry.split('/')[0]}\n\n`+
+`# 2. Build and push the model car\nexport REGISTRY=${c.registry}\n`+
+`./laptop/build.sh ${c.repo} ${c.tag} --push\n\n`+
+`# 3. Deploy in OpenShift AI - use this connection URI:\n#    oci://${img}`;
+}
+function genOpenshift(c){
+  const img = `${c.registry}/${imgName(c.repo)}:${c.tag}`;
+  return `# 1. Set credentials (one-time)\nexport QUAY_REGISTRY=${c.registry}\n`+
+`export QUAY_USERNAME=youruser+robot\nexport QUAY_PASSWORD=your-quay-token\n`+
+`export HF_TOKEN=hf_xxxxxxxxxxxxxxxxxxxx\nexport NAMESPACE=${c.ns}\n\n`+
+`# 2. Create secrets + apply the BuildConfig\n./openshift/deploy.sh setup\n\n`+
+`# 3. Trigger the cluster build\n./openshift/deploy.sh build ${c.repo} ${c.tag}\n\n`+
+`# Or do setup + build together:\n# ./openshift/deploy.sh all ${c.repo} ${c.tag}\n\n`+
+`# Result - deploy in OpenShift AI with connection URI:\n#    oci://${img}`;
+}
+function genWrapper(c){
+  return `#!/usr/bin/env bash\n`+
+`# openshift/build-run-${imgName(c.repo)}.sh - convenience wrapper around deploy.sh\n`+
+`set -euo pipefail\n`+
+`export QUAY_REGISTRY=${c.registry}\nexport NAMESPACE=${c.ns}\n`+
+`./openshift/deploy.sh all ${c.repo} ${c.tag}`;
+}
+function genPipeline(c){
+  const img = `${c.registry}/${imgName(c.repo)}:${c.tag}`;
+  return `# 1. Install deps & compile the pipeline\npip install -r pipeline/requirements.txt\n`+
+`python pipeline/model_car_pipeline.py\n\n`+
+`# 2. Point at your Data Science Pipelines server\n`+
+`export DSP_HOST="https://$(oc get route ds-pipeline-dspa -n ${c.ns} -o jsonpath='{.spec.host}')"\n`+
+`export DSP_TOKEN="$(oc whoami -t)"\n\n`+
+`# 3. Submit the build + register run\npython pipeline/run_pipeline.py \\\n`+
+`    --model-repo ${c.repo} \\\n    --image ${img} \\\n`+
+`    --model-name ${c.mname||imgName(c.repo)} \\\n    --model-version ${c.mver}\n\n`+
+`# The pipeline downloads -> builds -> pushes -> registers the model car\n`+
+`# in the OpenShift AI Model Registry, ready to deploy from the dashboard.`;
+}
+
+function refresh(){
+  updateSteps();
+  const c = cfg();
+  const sum = document.getElementById('sel-summary');
+  const tabsEl = document.getElementById('out-tabs');
+  const outText = document.getElementById('out-text');
+  const nextEl = document.getElementById('next-steps');
+
+  if (!S.mode){
+    sum.textContent = 'Pick a build target (Step 1) to begin.';
+    tabsEl.innerHTML = '';
+    outText.textContent = 'Select a build target and enter a model repo to generate commands.';
+    nextEl.textContent = '';
+    setOutButtons(false);
+    return;
+  }
+
+  const modeLabel = {laptop:'Laptop build', openshift:'OpenShift cluster build',
+                     pipeline:'Data Science Pipeline'}[S.mode];
+
+  if (!c.repo){
+    sum.innerHTML = `Target: <b>${modeLabel}</b>. Enter a model repo above.`;
+    tabsEl.innerHTML = '';
+    outText.textContent = 'Enter a Hugging Face model repo (org/model-name) to generate commands.';
+    nextEl.textContent = '';
+    setOutButtons(false);
+    return;
+  }
+
+  if (!validRepo(c.repo)){
+    sum.innerHTML = `Target: <b>${modeLabel}</b>.`;
+    tabsEl.innerHTML = '';
+    outText.textContent = `"${c.repo}" is not a valid repo id.\nExpected format: organization/model-name`;
+    nextEl.innerHTML = 'Fix the <b>model repo</b> field &mdash; it must look like <code>RedHatAI/Qwen3-8B-FP8-dynamic</code>.';
+    setOutButtons(false);
+    return;
+  }
+
+  sum.innerHTML = `Target: <b>${modeLabel}</b> &mdash; building model car for `+
+    `<b>${c.repo}</b> &rarr; <b>${c.registry}/${imgName(c.repo)}:${c.tag}</b>.`;
+
+  let tabs = [];
+  if (S.mode==='laptop'){
+    tabs = [{name:'Build & Push', file:`build-${imgName(c.repo)}.sh`, body:genLaptop(c)}];
+    nextEl.innerHTML = 'Needs <b>podman</b> or <b>docker</b> locally and free disk for the model. The image is built from <code>laptop/Containerfile</code>.';
+  } else if (S.mode==='openshift'){
+    tabs = [
+      {name:'deploy.sh',      file:`deploy-${imgName(c.repo)}.sh`,    body:genOpenshift(c)},
+      {name:'wrapper script', file:`build-run-${imgName(c.repo)}.sh`, body:genWrapper(c)}
+    ];
+    nextEl.innerHTML = 'Runs on the cluster via <code>openshift/buildconfig.yaml</code> (BuildConfig). No local build resources needed. Requires <code>oc</code> login.';
+  } else {
+    tabs = [{name:'Pipeline run', file:`run-pipeline-${imgName(c.repo)}.sh`, body:genPipeline(c)}];
+    nextEl.innerHTML = 'Runs as a Data Science Pipeline in OpenShift AI: download &rarr; build &rarr; push &rarr; <b>register in the Model Registry</b>. Requires the <code>hf-token</code> and <code>quay-push-secret</code> secrets and a Model Registry instance.';
+  }
+
+  if (S.outTab >= tabs.length) S.outTab = 0;
+  tabsEl.innerHTML = '';
+  tabs.forEach((t,i)=>{
+    const b = document.createElement('button');
+    b.className = 'tab' + (i===S.outTab?' on':'');
+    b.textContent = t.name;
+    b.onclick = ()=>{ S.outTab=i; refresh(); };
+    tabsEl.appendChild(b);
+  });
+  outText.textContent = tabs[S.outTab].body;
+  window._outRaw = tabs[S.outTab].body;
+  window._outFile = tabs[S.outTab].file;
+  setOutButtons(true);
+}
+
+/* Enable/disable the Copy and Download buttons together. */
+function setOutButtons(enabled){
+  document.getElementById('btn-copy').disabled = !enabled;
+  document.getElementById('btn-dl').disabled   = !enabled;
+}
+
+function copyOut(){
+  const txt = window._outRaw;
+  if (!txt) return;
+  navigator.clipboard.writeText(txt).then(()=>{
+    flash('btn-copy','Copied!');
+  });
+}
+
+/* Download the generated commands as an executable .sh file.
+   A leading shebang is prepended if the snippet does not already have one. */
+function downloadScript(){
+  let body = window._outRaw;
+  if (!body) return;
+  if (!body.startsWith('#!')){
+    body = '#!/usr/bin/env bash\n'
+         + '# Generated by the Model Car Builder UI\n'
+         + 'set -euo pipefail\n\n'
+         + body + '\n';
+  }
+  const blob = new Blob([body], {type:'text/x-shellscript'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = window._outFile || 'model-car-build.sh';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  flash('btn-dl','Saved!');
+}
+
+/* Briefly swap a button's label to confirm an action. */
+function flash(id, label){
+  const b = document.getElementById(id);
+  if (!b) return;
+  const o = b.textContent;
+  b.textContent = label;
+  setTimeout(()=>{ b.textContent = o; }, 1200);
+}
+
+/* ============================ INIT ============================ */
+refresh();
+</script>
+</body>
+</html>
