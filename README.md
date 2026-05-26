@@ -43,11 +43,7 @@ model-car-builder/
 ├── examples/
 │   ├── model-catalog.json    # Curated model list (validated + popular)
 │   └── inferenceservice-modelcar.yaml  # Example KServe deployment
-└── docs/
-    ├── LAPTOP.md
-    ├── OPENSHIFT.md
-    ├── PIPELINE.md
-    └── UI.md
+
 ```
 
 ## Quick start
@@ -67,7 +63,7 @@ export REGISTRY=quay.io/youruser
 ./laptop/build.sh RedHatAI/Qwen3-8B-FP8-dynamic latest --push
 ```
 
-→ See [docs/LAPTOP.md](docs/LAPTOP.md)
+→ See [LAPTOP.md](laptop/LAPTOP.md)
 
 ### 3. Build in an OpenShift cluster
 
@@ -79,7 +75,7 @@ export HF_TOKEN=hf_xxxxxxxxxxxx
 ./openshift/deploy.sh all RedHatAI/Qwen3-8B-FP8-dynamic
 ```
 
-→ See [docs/OPENSHIFT.md](docs/OPENSHIFT.md)
+→ See [OPENSHIFT.md](openshift/OPENSHIFT.md)
 
 ### 4. Run the Data Science Pipeline
 
@@ -98,7 +94,7 @@ python pipeline/run_pipeline.py \
 The pipeline **downloads → builds → pushes → registers** the model car in the
 OpenShift AI **Model Registry**, ready to deploy from the dashboard.
 
-→ See [docs/PIPELINE.md](docs/PIPELINE.md)
+→ See [PIPELINE.md](pipeline/PIPELINE.md)
 
 ## Deploying a model car
 
